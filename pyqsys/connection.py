@@ -28,7 +28,7 @@ class QSYSConnection:
                 # If no communication for 45 seconds, send NoOp (well before 60-second timeout)
                 if current_time - self._last_communication > 45:
                     self.send_command("NoOp", {})
-                time.sleep(5)  # Check every 5 seconds
+                time.sleep(55)  # Check every 55 seconds
                 
         self._keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
         self._keep_alive_thread.start()
@@ -42,6 +42,10 @@ class QSYSConnection:
             # Start listener thread
             self._listener_thread = threading.Thread(target=self._listen, daemon=True)
             self._listener_thread.start()
+
+             # Start keep-alive thread
+            self._start_keep_alive()
+
         except socket.error as e:
             raise ConnectionError(f"Failed to connect to Q-SYS Core: {e}")
 
@@ -105,12 +109,12 @@ class QSYSConnection:
     def _handle_message(self, message: Dict[str, Any]) -> None:
         """Handles incoming messages from Q-SYS Core"""
         print(f"Received message: {message}")
-        
+
         # Check if this is a change group update (it won't have an 'id' field)
         if 'method' in message and message.get('method') == 'ChangeGroup.AutoPoll':
             print(f"Change Group Update: {message.get('params', {})}")
             return
-    
+
         # Handle normal command responses
         message_id = message.get('id')
         if message_id in self._callbacks:
